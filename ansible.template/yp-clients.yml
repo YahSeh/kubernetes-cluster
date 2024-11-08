@@ -1,0 +1,70 @@
+---
+- name: Package Installation
+  hosts: all:!yp-srv  #group declared in the 'hosts' file
+  remote_user: ubuntu 
+
+##### NIS CLIENT CONFIGURATION #####
+
+  tasks:
+    - name: NIS automatic install
+      become: yes
+      apt:
+        name: nis
+        update_cache: yes
+        dpkg_options: 'force-confold,force-confdef'
+
+    - name: Stop the services
+      become: yes
+      command: systemctl stop rpcbind nis
+
+## Default Domain ##
+    - name: Changing the domain name
+      become: yes
+      copy:
+        src: /etc/ansible/templates/defaultdomain.template
+        dest: /etc/defaultdomain
+        owner: nobody
+        group: nogroup
+        mode: '0644'
+
+## yp configuration file ##    
+    - name: Changing the yp.conf file
+      become: yes
+      copy:
+        src: /etc/ansible/templates/yp.conf.june.template
+        dest: /etc/yp.conf
+        owner: nobody
+        group: nogroup
+        mode: '0644'
+
+## nsswitch file ##
+    - name: Changing the nsswitch file
+      become: yes
+      copy:
+        src: /etc/ansible/templates/nsswitch.conf.june.template 
+        dest: /etc/nsswitch.conf
+        owner: nobody
+        group: nogroup
+        mode: '0644'
+
+## common-session file ##
+    - name: Changing the common-session file
+      become: yes
+      copy:
+        src: /etc/ansible/templates/common-session.june.template 
+        dest: /etc/pam.d/common-session
+        owner: nobody
+        group: nogroup
+        mode: '0644'
+
+##### SERVICES RESTARTS #####
+
+    - name: binding the server
+      become: yes
+      command: ypbind
+
+    - name: restarting the nis services
+      become: yes
+      command: systemctl restart nis rpcbind
+...
+

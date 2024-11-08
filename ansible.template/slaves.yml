@@ -1,0 +1,53 @@
+---
+#FROM SCRATCH INSTALL
+#A basic install for 3 slaves computers
+
+- name: Package Installation
+  hosts: slaves  #group "slaves" is declared in the 'hosts' file
+  remote_user: ubuntu #ansible connexion used the "root" user
+  become: yes
+
+  tasks:
+    - name: Package Installation
+      apt: name={{ item }} update_cache=yes  state=latest #apt update & last version installed
+      with_items: #apt install x
+        - lxd
+        - python3-lxc
+        - lxc-utils
+        - lxctl
+        - htop
+        - bridge-utils
+        - libvirt-bin
+        - debootstrap
+        - ifupdown
+        - net-tools
+        - ntpdate
+        - nfs-common
+       
+##### LXC CONFIGURATION #####
+
+    - name: Listen on the 8443 port for LXC Remote
+      command: "{{item}}"
+      with_items:
+        - lxd init --auto
+        - lxc config set core.https_address [::]:8443
+        - lxc config set core.trust_password toto
+        - lxc profile device set default eth0 parent enp1s0 
+        - lxc profile device set default eth0 nictype macvlan
+
+##### NFS CONFIGURATION #####
+
+    - name: NFS configuration on the slave
+      command: "{{item}}"
+      with_items:
+        - mkdir -p /home/nfs
+        - mount 192.168.150.199:/home /home/nfs
+
+    - name: NFS configuration on the slave's containers
+      command: lxc profile device add default media disk source=/home/nfs path=/home
+
+##### NIS CLIENT CONFIGURATION #####
+
+- name: Calling yp-clients.yml
+  import_playbook: yp-clients.yml
+...

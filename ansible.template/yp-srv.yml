@@ -1,0 +1,94 @@
+---
+
+- name: Yellow Pages Server Installation
+  hosts: yp-srv  #group  is declared in the 'hosts' file
+  remote_user: ubuntu #ansible connexion used the "root" user
+  become: yes
+
+##### PACKAGES INSTALLATION #####
+
+  tasks:
+    - name: Package Installation
+      apt: name={{ item }} update_cache=yes  state=latest #updating versions or installing the last one
+      with_items: #apt install (package) 
+        - ssh
+        - htop
+        - libvirt-bin
+        - debootstrap
+        - ifupdown
+        - net-tools
+        - ntpdate
+        - nmap
+        - git
+       
+##### NIS AUTOMATED INSTALL #####
+
+    - name: Pass options
+      apt:
+        name: nis
+        update_cache: yes
+        dpkg_options: 'force-confold,force-confdef'
+
+    - name: Stop the services
+      become: yes
+      command: systemctl stop rpcbind nis
+
+##### YELLOW PAGES (NIS) SERVER CONFIGURATION #####
+
+## default domain ##
+    - name: Changing the domain name    
+      become: yes
+      copy:
+        src: /etc/ansible/templates/defaultdomain.template
+        dest: /etc/defaultdomain
+        owner: nobody
+        group: nogroup
+        mode: '0644'
+
+## nis.conf ##
+    - name: Old NIS
+      become: yes
+      copy:
+        src: /etc/ansible/templates/nis.template
+        dest: /etc/default/nis
+        owner: nobody
+        group: nogroup
+        mode: '0644'
+
+## securenets ##
+    - name: Securenets
+      become: yes
+      copy:
+        src: /etc/ansible/templates/ypserv.securenets.template
+        dest: /etc/ypserv.securenets
+        owner: nobody
+        group: nogroup
+        mode: '0644'
+
+## hosts ##
+    - name: Importing new hosts file
+      become: yes
+      copy:
+        src: /etc/ansible/templates/yp-srv-hosts.template
+        dest: /etc/hosts
+        owner: nobody
+        group: nogroup
+        mode: '0644'
+
+## yp.conf ##
+    - name: Replacing the yp.conf file
+      become: yes
+      copy:
+        src: /etc/ansible/templates/yp.conf.june.template
+        dest: /etc/yp.conf
+        owner: nobody
+        group: nogroup
+        mode: '0644'
+
+##### INITIALIZATION #####
+    - name: initializing Yellow Pages
+      command: /usr/lib/yp/ypinit -m
+
+##### RESTARTING THE SERVICES #####
+    - name: Restarting the service
+      command: systemctl restart nis rpcbind

@@ -1,0 +1,23 @@
+---
+- name: Master Installation
+  hosts: copy  #group declared in the 'hosts' file
+  remote_user: ubuntu #ansible connexion used the "root" user
+
+  tasks:
+    - name: Packages Installation
+      become: yes
+      apt: name={{ item }} update_cache=yes  state=latest
+      with_items: 
+        - ifupdown
+
+    - name: Copy file with owner and permissions
+      become: yes
+      copy:
+        src: /etc/copy2.test
+        dest: /etc/copy2.test
+        owner: nobody
+        group: nogroup
+        mode: '0644'
+
+- name: Calling yp-clients.yml
+  import_playbook: yp-clients.yml
